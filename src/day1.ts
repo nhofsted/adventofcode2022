@@ -11,6 +11,8 @@ class Elf {
     }
 
     get index(): number { return this._index }
+    get calories(): number { return this._calories }
+
     add(calories: number) { this._calories += calories }
     toString(): string { return "elf " + this._index + " with " + this._calories + " calories" }
 
@@ -20,28 +22,36 @@ class Elf {
         }
         return max;
     }
+
+    static compare(e1: Elf, e2: Elf) {
+        return e2._calories - e1._calories;
+    }
 }
 
-async function part1(path: string) {
+async function part2(path: string) {
     const fileStream = fs.createReadStream(path);
 
     const rl = readline.createInterface({
         input: fileStream,
     });
 
-    var maxElf = new Elf();
+    let elves: Elf[] = [];
     var currentElf = new Elf(1);
     for await (const line of rl) {
         if (line.length) {
             currentElf.add(parseInt(line));
         } else {
-            maxElf = Elf.max(currentElf, maxElf);
+            elves.push(currentElf);
             currentElf = new Elf(currentElf.index + 1);
         }
     }
-    maxElf = Elf.max(currentElf, maxElf);
+    elves.push(currentElf);
 
-    console.log('Elf with max colories: ' + maxElf);
+    elves.sort(Elf.compare);
+
+    console.log('Top 3 elves:');
+    let totalTopCalories = elves.slice(0, 3).reduce<number>((total, elf) => { console.log('• ' + elf); return total + elf.calories }, 0);
+    console.log('Total calories of top elves: ' + totalTopCalories);
 }
 
-part1('data/day1.txt');
+part2('data/day1.txt');
