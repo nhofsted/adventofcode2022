@@ -36,7 +36,7 @@ async function part2(path: string) {
     });
 
     let elves: Elf[] = [];
-    var currentElf = new Elf(1);
+    let currentElf = new Elf(1);
     for await (const line of rl) {
         if (line.length) {
             currentElf.add(parseInt(line));

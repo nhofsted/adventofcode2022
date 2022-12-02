@@ -27,9 +27,9 @@ async function part2(path: string) {
     const A = 'A'.charCodeAt(0);
     const X = 'X'.charCodeAt(0);
 
-    var score1 = 0;
-    var score2 = 0;
-    var score2b = 0;
+    let score1 = 0;
+    let score2 = 0;
+    let score2b = 0;
     for await (const line of rl) {
         let opponentShape = line.charCodeAt(0) - A;
         let result = line.charCodeAt(2) - X;
