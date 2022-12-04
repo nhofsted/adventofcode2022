@@ -13,7 +13,7 @@ async function part2(path: string) {
     for await (const line of rl) {
         const ranges = line.split(/[-,]/).map(x => Number.parseInt(x));
         contains += ranges[0] <= ranges[2] && ranges[1] >= ranges[3] || ranges[0] >= ranges[2] && ranges[1] <= ranges[3] ? 1 : 0;
-        overlap += ranges[0] <= ranges[2] && ranges[1] >= ranges[2] || ranges[0] <= ranges[3] && ranges[1] >= ranges[3] || ranges[0] >= ranges[2] && ranges[1] <= ranges[3] ? 1 : 0;
+        overlap += ranges[0] < ranges[2] && ranges[1] < ranges[2] || ranges[0] > ranges[3] && ranges[1] > ranges[3] ? 0 : 1;
     }
 
     console.log('In ' + contains + ' assignment pairs does one range fully contain the other');
