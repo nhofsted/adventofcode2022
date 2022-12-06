@@ -34,7 +34,7 @@ class Stack {
                 const bottom = column.substring(0, column.length - amount);
                 const top = column.substring(column.length - amount);
                 this.s[from - 1] = bottom;
-                if(multiBoxFeature) {
+                if (multiBoxFeature) {
                     this.s[to - 1] += top;
                 } else {
                     this.s[to - 1] += top.split("").reverse().join("");
@@ -65,5 +65,7 @@ async function part(path: string, multiBoxFeature: boolean) {
     console.log(s.readTop());
 }
 
-part('data/day5.txt', false);
-part('data/day5.txt', true);
+async function parts() {
+    await part('data/day5.txt', false);
+    await part('data/day5.txt', true);
+}

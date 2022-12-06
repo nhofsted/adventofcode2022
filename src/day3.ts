@@ -50,5 +50,9 @@ async function part2(path: string) {
     console.log('Sum of all priorities (part 2): ' + prioritySum);
 }
 
-part1('data/day3.txt');
-part2('data/day3.txt');
+async function parts() {
+    part1('data/day3.txt');
+    part2('data/day3.txt');
+}
+
+parts();
