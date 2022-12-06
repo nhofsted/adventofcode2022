@@ -23,7 +23,7 @@ class Stack {
         }
     }
 
-    async executeRearrangementScript(rl: readline.Interface) {
+    async executeRearrangementScript(rl: readline.Interface, multiBoxFeature: boolean) {
         for await (const line of rl) {
             const match = line.match(/move (\d+) from (\d+) to (\d+)/);
             if (match != null) {
@@ -34,7 +34,11 @@ class Stack {
                 const bottom = column.substring(0, column.length - amount);
                 const top = column.substring(column.length - amount);
                 this.s[from - 1] = bottom;
-                this.s[to - 1] += top.split("").reverse().join("");
+                if(multiBoxFeature) {
+                    this.s[to - 1] += top;
+                } else {
+                    this.s[to - 1] += top.split("").reverse().join("");
+                }
             }
         }
     }
@@ -48,7 +52,7 @@ class Stack {
     }
 }
 
-async function part1(path: string) {
+async function part(path: string, multiBoxFeature: boolean) {
     const fileStream = fs.createReadStream(path);
 
     const rl = readline.createInterface({
@@ -56,9 +60,10 @@ async function part1(path: string) {
     });
 
     const s = new Stack();
-    await s.readStackConfiguration(rl)
-    await s.executeRearrangementScript(rl);
+    await s.readStackConfiguration(rl);
+    await s.executeRearrangementScript(rl, multiBoxFeature);
     console.log(s.readTop());
 }
 
-part1('data/day5.txt');
+part('data/day5.txt', false);
+part('data/day5.txt', true);
