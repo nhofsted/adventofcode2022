@@ -23,8 +23,9 @@ async function part2(path: string, size: number) {
     for await (const line of rl) {
         outer: for (let i = 0; i < line.length; ++i) {
             for (let j = 0; j < size; ++j) {
-                for (let k = 0; k < size; ++k) {
-                    if (j != k && line.charAt(i + k) == line.charAt(i + j)) {
+                for (let k = j + 1; k < size; ++k) {
+                    if (line.charAt(i + k) == line.charAt(i + j)) {
+                        i = i + j;
                         continue outer;
                     }
                 }
