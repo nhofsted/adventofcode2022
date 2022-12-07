@@ -108,26 +108,28 @@ function printFileSystem(n: INode, indent: number = 0) {
         for (const child of n) {
             printFileSystem(child, indent + 2);
         }
-
     }
 }
 
-function sumSmallDirectories(cwd: Directory) {
+type DirectoryInformation = {
+    directory: Directory;
+    recursiveSize: number;
+}
+
+function directorySizes(cwd: Directory) {
+    let result: DirectoryInformation[] = [];
     let sum = 0;
-    let filteredSum = 0;
     for (const child of cwd) {
         if (child instanceof File) {
             sum += child.size;
         } else if (child instanceof Directory) {
-            const { sum: _sum, filteredSum: _filteredSum } = sumSmallDirectories(child);
+            const { sum: _sum, result: _result } = directorySizes(child);
             sum += _sum;
-            filteredSum += _filteredSum;
+            result = result.concat(_result);
         }
     }
-    if (sum <= 100_000) {
-        filteredSum += sum;
-    }
-    return { sum, filteredSum };
+    result.push({ directory: cwd, recursiveSize: sum });
+    return { sum, result };
 }
 
 async function part1(path: string) {
@@ -135,7 +137,31 @@ async function part1(path: string) {
     const rl = readline.createInterface(fileStream);
     const root = await constructFileSystem(rl);
     printFileSystem(root);
-    console.log("The sum of the total sizes of all of the directories with a total size of at most 100000 is " + sumSmallDirectories(root).filteredSum);
+    console.log("The sum of the total sizes of all of the directories with a total size of at most 100000 is " +
+        directorySizes(root).result
+            .filter(info => info.recursiveSize <= 100_000)
+            .reduce((sum, info) => info.recursiveSize + sum, 0));
 }
 
-part1('data/day7.txt');
+async function part2(path: string) {
+    const fileStream = fs.createReadStream(path);
+    const rl = readline.createInterface(fileStream);
+    const root = await constructFileSystem(rl);
+    const directoryInformation = directorySizes(root).result;
+    const inUse = directoryInformation.find(info => info.directory.isRoot)?.recursiveSize ?? 0;
+    const free = 70_000_000 - inUse;
+    const toFree = 30_000_000 - free;
+    console.log("The total size of the smallest directory that, if deleted, would free up enough space (" + toFree + ") on the filesystem to run the update is " +
+        directoryInformation
+            .filter(info => info.recursiveSize > toFree)
+            .sort((i1, i2) => i1.recursiveSize - i2.recursiveSize)
+            [0]
+            .recursiveSize);
+}
+
+async function parts() {
+    await part1('data/day7.txt');
+    await part2('data/day7.txt');
+}
+
+parts();
