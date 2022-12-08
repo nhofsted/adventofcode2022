@@ -42,15 +42,17 @@ async function part2(path: string) {
             currentElf.add(parseInt(line));
         } else {
             elves.push(currentElf);
+            elves = elves.sort(Elf.compare);
+            if (elves.length > 3) elves.pop();
             currentElf = new Elf(currentElf.index + 1);
         }
     }
     elves.push(currentElf);
-
-    elves.sort(Elf.compare);
+    elves = elves.sort(Elf.compare);
+    if (elves.length > 3) elves.pop();
 
     console.log('Top 3 elves:');
-    let totalTopCalories = elves.slice(0, 3).reduce<number>((total, elf) => { console.log('• ' + elf); return total + elf.calories }, 0);
+    let totalTopCalories = elves.reduce<number>((total, elf) => { console.log('• ' + elf); return total + elf.calories }, 0);
     console.log('Total calories of top elves: ' + totalTopCalories);
 }
 
