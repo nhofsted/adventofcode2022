@@ -32,14 +32,15 @@ class Node {
     }
 }
 
-async function part1(path: string) {
+async function part(path: string, length: number) {
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
 
     const visited: Set<String> = new Set();
 
-    const head = new Node();
-    const tail = new Node();
+    const rope = Array.from({ length: length }, () => new Node());
+    const head = rope[0];
+    const tail = rope[length - 1];
 
     const k0 = '0'.charCodeAt(0);
 
@@ -61,12 +62,19 @@ async function part1(path: string) {
                     head.moveDown();
                     break;
             }
-            tail.follow(head);
+            for (let n = 1; n < length; ++n) {
+                rope[n].follow(rope[n - 1]);
+            }
             visited.add(tail.location);
         }
     }
 
-    console.log("The tail visited at least " + visited.size + " positions once.");
+    console.log("The tail of a rope with length " + length + " visited at least " + visited.size + " positions once.");
 }
 
-part1('data/day9.txt');
+async function parts() {
+    await part('data/day9.txt', 2);
+    await part('data/day9.txt', 10);
+}
+
+parts();
