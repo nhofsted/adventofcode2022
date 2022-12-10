@@ -29,19 +29,33 @@ class CPU {
     }
 }
 
-async function part1(path: string) {
+async function parts(path: string) {
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
     const cpu = new CPU();
 
+    let line = "";
     let signalStrength = 0;
     for await (const state of cpu.run(rl)) {
+        // part 1
         if ((state.time - 20) % 40 == 0) {
             signalStrength += state.time * state.register;
         }
+
+        // part 2
+        const column = (state.time - 1) % 40 + 1;
+        if (Math.abs(state.register - column + 1) < 2) {
+            line += '#';
+        } else {
+            line += '.';
+        }
+        if (column == 40) {
+            console.log(line);
+            line = "";
+        }
     }
 
-    console.log("The sum of the signal strengths is " + signalStrength);
+    console.log("\nThe sum of the signal strengths is " + signalStrength);
 }
 
-part1('data/day10.txt');
+parts('data/day10.txt');
