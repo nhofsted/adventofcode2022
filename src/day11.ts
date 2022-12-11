@@ -16,12 +16,41 @@ class Item {
         this._worryLevel = worryCalculator.inspect(this._worryLevel);
     }
 
-    loseInterest() {
-        this._worryLevel = Math.floor(this.worryLevel / 3);
+    normalize(normalizer: Normalizer) {
+        this._worryLevel = normalizer.normalize(this._worryLevel);
     }
 
     toString(): string {
         return this._worryLevel.toString();
+    }
+}
+
+interface Normalizer {
+    normalize(input: number): number;
+}
+
+class ReliefNormalizer implements Normalizer {
+    normalize(input: number): number {
+        return Math.floor(input / 3);
+    }
+}
+
+class TroopDivisorNormalizer implements Normalizer {
+    private troop: Monkey[];
+    private modulo: number | undefined;
+
+    constructor(troop: Monkey[]) {
+        this.troop = troop;
+    }
+
+    normalize(input: number): number {
+        if (this.modulo === undefined) {
+            this.modulo = 1;
+            for (const monkey of this.troop) {
+                this.modulo *= monkey.tester.testValue;
+            }
+        }
+        return input % this.modulo;
     }
 }
 
@@ -59,7 +88,7 @@ class WorryCalculator {
 }
 
 class ItemTargetTester {
-    private testValue: number;
+    readonly testValue: number;
     private trueTarget: number;
     private falseTarget: number;
 
@@ -80,6 +109,7 @@ class Monkey {
     private items: Item[] = [];
     private worryCalculator: WorryCalculator;
     private itemTargetTester: ItemTargetTester;
+    private _normalizer: Normalizer | undefined;
     private _inspections = 0;
 
     constructor(id: number, troop: Monkey[], items: Item[], worryCalculator: WorryCalculator, itemTargetTester: ItemTargetTester) {
@@ -99,13 +129,21 @@ class Monkey {
         while (item = this.items.shift()) {
             ++this._inspections;
             item.inspect(this.worryCalculator);
-            item.loseInterest();
+            if (this._normalizer) item.normalize(this._normalizer);
             this.troop[this.itemTargetTester.test(item)].accept(item);
         }
     }
 
     get inspections() {
         return this._inspections;
+    }
+
+    get tester() {
+        return this.itemTargetTester;
+    }
+
+    set normalizer(normalizer: Normalizer | undefined) {
+        this._normalizer = normalizer;
     }
 
     toString(): string {
@@ -148,17 +186,26 @@ class Monkey {
     }
 }
 
-async function part1(path: string) {
+async function part(path: string, iterations: number, option: string) {
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
 
     const troop: Monkey[] = [];
+
+    let normalizer: Normalizer | undefined;
+    if (option === "relief") {
+        normalizer = new ReliefNormalizer();
+    } else if (option === "contain") {
+        normalizer = new TroopDivisorNormalizer(troop);
+    }
+
     let monkey;
     while ((monkey = await Monkey.createMonkey(troop, rl)) != null) {
+        monkey.normalizer = normalizer;
         troop.push(monkey);
     }
 
-    for (let i = 0; i < 20; ++i) {
+    for (let i = 0; i < iterations; ++i) {
         for (const monkey of troop) {
             monkey.turn();
         }
@@ -171,7 +218,15 @@ async function part1(path: string) {
 
     troop.sort((m1, m2) => m2.inspections - m1.inspections);
 
-    console.log("The level of monkey business after 20 rounds of stuff-slinging simian shenanigans is " + (troop[0].inspections * troop[1].inspections));
+    console.log("The level of monkey business after " + iterations + " rounds of stuff-slinging simian shenanigans is " + (troop[0].inspections * troop[1].inspections));
 }
 
-part1('data/day11.txt');
+async function parts() {
+    console.log("part 1");
+    await part('data/day11.txt', 20, "relief");
+    console.log();
+    console.log("part 2");
+    await part('data/day11.txt', 10000, "contain");
+}
+
+parts();
