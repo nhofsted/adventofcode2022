@@ -44,4 +44,26 @@ async function part1(path: string) {
     console.log("The sum of the indices of the correctly sorted pairs is " + sum);
 }
 
-part1("data/day13.txt");
+async function part2(path: string) {
+    const fileStream = fs.createReadStream(path);
+    const rl = readline.createInterface(fileStream);
+
+    const list: T[] = [];
+    for await (const line of rl) {
+        if (line.length != 0) list.push(JSON.parse(line));
+    }
+    const mark2 = [[2]];
+    const mark6 = [[6]];
+    list.push(mark2);
+    list.push(mark6);
+
+    list.sort((a,b) => compare(a,b));
+    console.log("The sum of the indices of the correctly sorted pairs is " + (list.indexOf(mark2)+1) * (list.indexOf(mark6)+1));
+}
+
+async function parts() {
+    await part1("data/day13.txt");
+    await part2("data/day13.txt");
+}
+
+parts();
