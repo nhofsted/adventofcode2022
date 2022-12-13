@@ -58,7 +58,7 @@ async function part2(path: string) {
     list.push(mark6);
 
     list.sort((a,b) => compare(a,b));
-    console.log("The sum of the indices of the correctly sorted pairs is " + (list.indexOf(mark2)+1) * (list.indexOf(mark6)+1));
+    console.log("The decoder key for the distress signal is " + (list.indexOf(mark2)+1) * (list.indexOf(mark6)+1));
 }
 
 async function parts() {
