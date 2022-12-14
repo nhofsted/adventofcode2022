@@ -15,6 +15,10 @@ function createCoordinate(point: string): Coordinate {
 }
 
 function drawRocks(cave: number[][], from: Coordinate, to: Coordinate) {
+    while (cave.length < Math.max(from.y, to.y) + 2) {
+        cave.push(new Array<number>(1001).fill(0));
+    }
+
     if (from.x == to.x) {
         const { start, end } = (from.y < to.y) ? { start: from.y, end: to.y } : { start: to.y, end: from.y };
         for (let p = start; p <= end; ++p) {
@@ -30,7 +34,7 @@ function drawRocks(cave: number[][], from: Coordinate, to: Coordinate) {
 
 function dropSand(cave: number[][], sand: Coordinate): Coordinate {
     let retVal = { ...sand };
-    while (retVal.y < 500) {
+    while (retVal.y < cave.length-1) {
         if (cave[retVal.y + 1][retVal.x] == 0) {
             retVal.y++;
         }
@@ -51,14 +55,11 @@ function dropSand(cave: number[][], sand: Coordinate): Coordinate {
     return retVal;
 }
 
-async function part1(path: string) {
+async function parts(path: string) {
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
 
     const cave: number[][] = [];
-    for (let i = 0; i < 501; ++i) {
-        cave.push(new Array<number>(1001).fill(0));
-    }
 
     let pen: Coordinate | undefined;
     for await (const line of rl) {
@@ -75,11 +76,16 @@ async function part1(path: string) {
     }
 
     let sand = 0;
-    while (dropSand(cave, { x: 500, y: 0 }).y != 500) {
+    let pos;
+    let firstDrop = false;
+    while ((pos = dropSand(cave, { x: 500, y: 0 })).y != 0) {
+        if (!firstDrop && pos.y == cave.length - 1) {
+            console.log(sand + " units of sand come to rest before sand starts flowing into the abyss below.");
+            firstDrop = true;
+        }
         ++sand;
     }
-
-    console.log(sand + " units of sand come to rest before sand starts flowing into the abyss below.");
+    console.log((sand + 1)  + " units of sand come to rest.");
 }
 
-part1("data/day14.txt");
+parts("data/day14.txt");
