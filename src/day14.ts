@@ -3,20 +3,23 @@ import readline = require('readline');
 
 const ROCK = 8;
 const SAND = 1;
+const EMPTY = 0;
 
 type Coordinate = {
     x: number;
     y: number;
 }
 
+type Cave = number[][];
+
 function createCoordinate(point: string): Coordinate {
     const coords: number[] = point.split(",").map(c => Number.parseInt(c));
     return { x: coords[0], y: coords[1] };
 }
 
-function drawRocks(cave: number[][], from: Coordinate, to: Coordinate) {
+function drawRocks(cave: Cave, from: Coordinate, to: Coordinate) {
     while (cave.length < Math.max(from.y, to.y) + 2) {
-        cave.push(new Array<number>(1001).fill(0));
+        cave.push(new Array<number>(1001).fill(EMPTY));
     }
 
     if (from.x == to.x) {
@@ -32,17 +35,17 @@ function drawRocks(cave: number[][], from: Coordinate, to: Coordinate) {
     }
 }
 
-function dropSand(cave: number[][], sand: Coordinate): Coordinate {
+function dropSand(cave: Cave, sand: Coordinate): Coordinate {
     let retVal = { ...sand };
     while (retVal.y < cave.length-1) {
-        if (cave[retVal.y + 1][retVal.x] == 0) {
+        if (cave[retVal.y + 1][retVal.x] == EMPTY) {
             retVal.y++;
         }
-        else if (cave[retVal.y + 1][retVal.x - 1] == 0) {
+        else if (cave[retVal.y + 1][retVal.x - 1] == EMPTY) {
             retVal.y++;
             retVal.x--;
         }
-        else if (cave[retVal.y + 1][retVal.x + 1] == 0) {
+        else if (cave[retVal.y + 1][retVal.x + 1] == EMPTY) {
             retVal.y++;
             retVal.x++;
         }
@@ -59,7 +62,7 @@ async function parts(path: string) {
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
 
-    const cave: number[][] = [];
+    const cave: Cave = [];
 
     let pen: Coordinate | undefined;
     for await (const line of rl) {
