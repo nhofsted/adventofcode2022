@@ -41,7 +41,48 @@ class Sensor {
     }
 }
 
-async function part1(path: string, position: number) {
+function intersectSensors(sensors: Sensor[], position: number) {
+    const segments: HorizontalLineSegment[] = [];
+    for (const sensor of sensors) {
+        const segment = sensor.intersectHorizontally(position);
+        if (segment)
+            segments.push(segment);
+    }
+
+    const points = segments.reduce<number[]>((acc, cur) => {
+        acc.push(cur.x1, cur.x2);
+        return acc;
+    }, []).sort((a, b) => a - b);
+    return { points, segments };
+}
+
+function testPoint(segments: HorizontalLineSegment[], point: number, searchZone: number): boolean {
+    if (point < 0 || point > searchZone) return false;
+    return segments.find(s => s.contains(point)) === undefined;
+}
+
+function findDistressBeacon(sensors: Sensor[], position: number, searchZone: number) {
+    let distress: Coordinate | undefined;
+    for (let y = 0; y <= searchZone; ++y) {
+        const { points, segments }: { points: number[]; segments: HorizontalLineSegment[]; } = intersectSensors(sensors, y);
+        if (points.length == 0) {
+            return { x: 0, y };
+        }
+        for (const point of points) {
+            if (testPoint(segments, point - 1, searchZone)) {
+                return { x: point - 1, y };
+            }
+            if (testPoint(segments, point + 1, searchZone)) {
+                return { x: point + 1, y };
+            }
+        }
+    }
+    return distress;
+}
+
+async function part(path: string, position: number) {
+    const searchZone = position * 2;
+
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
 
@@ -56,16 +97,7 @@ async function part1(path: string, position: number) {
         sensors.push(new Sensor(sensorPosition, manhattanDistance(sensorPosition, beaconPosition)));
     }
 
-    const segments: HorizontalLineSegment[] = [];
-    for (const sensor of sensors) {
-        const segment = sensor.intersectHorizontally(position);
-        if (segment) segments.push(segment);
-    }
-
-    const points = segments.reduce<number[]>((acc, cur) => {
-        acc.push(cur.x1, cur.x2);
-        return acc;
-    }, []).sort((a, b) => a - b);
+    const { points, segments }: { points: number[]; segments: HorizontalLineSegment[]; } = intersectSensors(sensors, position);
 
     let currentPos: number | undefined;
     let filled = 0;
@@ -81,11 +113,19 @@ async function part1(path: string, position: number) {
     filled -= new Set(beaconPositions.filter(b => b.y == position).map(p => p.x)).size;
 
     console.log("In the row where y=" + position + ", " + filled + " position" + ((filled != 0) ? "s" : "") + " cannot contain a beacon.");
+
+    let distress: Coordinate | undefined = findDistressBeacon(sensors, position, searchZone);
+
+    if (distress !== undefined) {
+        console.log("The tuning frequency of the distress signal is " + (distress.x * 4000000 + distress.y));
+    } else {
+        console.log("No distress beacon found");
+    }
 }
 
-async function parts() {
-    await part1("data/day15.txt", 10);
-    await part1("data/day15.txt", 2000000);
+async function parts(path: string) {
+    await part(path, 10);
+    await part(path, 2000000);
 }
 
-parts();
+parts("data/day15.txt");
