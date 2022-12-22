@@ -208,6 +208,19 @@
             "outFiles": [
                 "${workspaceFolder}/dst/**/*.js"
             ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "day17",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}\\dst\\day17.js",
+            "preLaunchTask": "tsc: build - tsconfig.json",
+            "outFiles": [
+                "${workspaceFolder}/dst/**/*.js"
+            ]
         }
     ]
 }
