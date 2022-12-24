@@ -1,6 +1,5 @@
 import fs = require('fs');
 import readline = require('readline');
-import { start } from 'repl';
 
 const pieces = [
     [
