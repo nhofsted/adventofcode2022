@@ -79,13 +79,15 @@ abstract class SearchNode {
 
 class BluePrintSearchNode extends SearchNode {
     readonly time: number;
+    readonly maxTime: number;
     readonly inventory: Resources;
     readonly robots: Resources;
     readonly blueprint: Blueprint;
 
-    constructor(time: number, inventory: Resources, robots: Resources, blueprint: Blueprint, parent?: BluePrintSearchNode) {
+    constructor(time: number, inventory: Resources, robots: Resources, blueprint: Blueprint, maxTime: number, parent?: BluePrintSearchNode) {
         super(parent);
         this.time = time;
+        this.maxTime = maxTime;
         this.inventory = inventory;
         this.robots = robots;
         this.blueprint = blueprint;
@@ -97,12 +99,12 @@ class BluePrintSearchNode extends SearchNode {
 
     get children(): BluePrintSearchNode[] {
         const children: BluePrintSearchNode[] = [];
-        if (this.time == 25) return children;
+        if (this.time == this.maxTime) return children;
         const buildOptions: { robots: Resources, inventory: Resources }[] = this.getBuildOptions(this.inventory);
         for (const option of buildOptions) {
             const nextRobotOptions = this.robots.add(option.robots);
             const nextInventory = option.inventory.add(this.robots);
-            children.push(new BluePrintSearchNode(this.time + 1, new Resources(nextInventory), new Resources(nextRobotOptions), this.blueprint, this));
+            children.push(new BluePrintSearchNode(this.time + 1, new Resources(nextInventory), new Resources(nextRobotOptions), this.blueprint, this.maxTime, this));
         }
         return children;
     }
@@ -121,12 +123,15 @@ class BluePrintSearchNode extends SearchNode {
         let robots = new Resources(this.robots);
         let inventory = new Resources(this.inventory);
         let time = this.time;
-        while (time < 25) {
-            const newInventory = inventory.add(robots);
+        while (time < this.maxTime) {
+            let newInventory = inventory.add(robots);
             if (inventory.largerOrEqual(this.blueprint.robotTypes.ore.costs)) robots = robots.add(new Resources({ ore: 1 }));
             if (inventory.largerOrEqual(this.blueprint.robotTypes.clay.costs)) robots = robots.add(new Resources({ clay: 1 }));
             if (inventory.largerOrEqual(this.blueprint.robotTypes.obsidian.costs)) robots = robots.add(new Resources({ obsidian: 1 }));
-            if (inventory.largerOrEqual(this.blueprint.robotTypes.geode.costs)) robots = robots.add(new Resources({ geode: 1 }));
+            if (inventory.largerOrEqual(this.blueprint.robotTypes.geode.costs)) {
+                robots = robots.add(new Resources({ geode: 1 }));
+                newInventory = newInventory.subtract(this.blueprint.robotTypes.geode.costs);
+            }
             inventory = newInventory;
             time++;
         }
@@ -145,11 +150,12 @@ function findLargestLeaf(n: SearchNode, largest: number = 0): number {
     return largest;
 }
 
-async function part1(path: string) {
+async function parts(path: string) {
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
 
-    let qualitySum = 0;
+    let qualitySum24 = 0;
+    let maxProduct32 = 1;
     for await (const line of rl) {
         const m = line.match(/Blueprint (\d+): Each ore robot costs (\d+) ore. Each clay robot costs (\d+) ore. Each obsidian robot costs (\d+) ore and (\d+) clay. Each geode robot costs (\d+) ore and (\d+) obsidian./)!.map(s => Number.parseInt(s));
         const bluePrint = {
@@ -161,12 +167,19 @@ async function part1(path: string) {
                 geode: new RobotType(new Resources({ ore: m[6], obsidian: m[7] })),
             })
         }
-        const mostObsidian = findLargestLeaf(new BluePrintSearchNode(1, new Resources({}), new Resources({ ore: 1 }), bluePrint));
-        console.log("Blueprint " + bluePrint.id + ": " + mostObsidian);
-        qualitySum += bluePrint.id * mostObsidian;
+        const mostObsidian24 = findLargestLeaf(new BluePrintSearchNode(1, new Resources({}), new Resources({ ore: 1 }), bluePrint, 25));
+        console.log("Blueprint " + bluePrint.id + " collects " + mostObsidian24 + " geodes in 24 minutes");
+        qualitySum24 += bluePrint.id * mostObsidian24;
+
+        if (bluePrint.id < 4) {
+            const mostObsidian32 = findLargestLeaf(new BluePrintSearchNode(1, new Resources({}), new Resources({ ore: 1 }), bluePrint, 33));
+            console.log("Blueprint " + bluePrint.id + " collects " + mostObsidian32 + " geodes in 32 minutes");
+            maxProduct32 = maxProduct32 * mostObsidian32;
+        }
     }
 
-    console.log("The quality level of all of the blueprints is " + qualitySum);
+    console.log("The quality level of all of the blueprints in 24 minutes is " + qualitySum24);
+    console.log("The maximum one of the first three blueprints can collect is " + maxProduct32);
 }
 
-part1("data/day19.txt");
+parts("data/day19.txt");
