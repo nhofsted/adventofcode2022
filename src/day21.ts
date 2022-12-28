@@ -13,58 +13,96 @@ type Statement = {
     right: string | number;
 }
 
-const solved = new Map<string, number>();
-const open = new Map<string, Statement>();
-const requirements = new Map<string, string[]>();
+class Environment {
+    readonly solved = new Map<string, number>();
+    readonly open = new Map<string, Statement[]>();
+    readonly requirements = new Map<string, string[]>();
+}
 
-function addFact(key: string, value: number) {
-    solved.set(key, value);
-    const names = requirements.get(key);
+function addFact(env: Environment, key: string, value: number) {
+    env.solved.set(key, value);
+    env.open.delete(key);
+    const names = env.requirements.get(key);
     if (names) {
-        requirements.delete(key);
+        env.requirements.delete(key);
         for (const name of names) {
-            const statement = open.get(name)!;
-            if (statement.left === key) statement.left = value;
-            if (statement.right === key) statement.right = value;
-            if (typeof statement.left == "number" && typeof statement.right == "number") solve(name);
-        };
+            if (env.open.has(name)) {
+                for (const statement of env.open.get(name)!) {
+                    if (statement.left === key) statement.left = value;
+                    if (statement.right === key) statement.right = value;
+                    solve(env, name);
+                }
+            }
+        }
     }
 }
 
-function addRequirement(name: string, req: string) {
-    if (requirements.has(req)) {
-        requirements.get(req)!.push(name);
+function addRequirement(env: Environment, name: string, req: string) {
+    if (env.requirements.has(req)) {
+        env.requirements.get(req)!.push(name);
     } else {
-        requirements.set(req, [name]);
+        env.requirements.set(req, [name]);
     }
 }
 
-function addStatement(name: string, statement: Statement) {
-    open.set(name, statement);
-    if (typeof statement.left == "string" && solved.has(statement.left)) statement.left = solved.get(statement.left)!;
-    if (typeof statement.right == "string" && solved.has(statement.right)) statement.right = solved.get(statement.right)!;
-    if (typeof statement.left == "number" && typeof statement.right == "number") solve(name);
-    if (typeof statement.left == "string") addRequirement(name, statement.left);
-    if (typeof statement.right == "string") addRequirement(name, statement.right);
+function addOpenStatement(env: Environment, name: string, statement: Statement) {
+    if (env.open.has(name)) {
+        env.open.get(name)!.push(statement);
+    } else {
+        env.open.set(name, [statement]);
+    }
 }
 
-function solve(name: string) {
-    const s = open.get(name)!;
-    if (typeof s.left == "string" || typeof s.right == "string") return;
-    open.delete(name);
-    switch (s.operation) {
+function addStatement(env: Environment, name: string, statement: Statement) {
+    addOpenStatement(env, name, statement);
+    if (typeof statement.left == "string" && env.solved.has(statement.left)) statement.left = env.solved.get(statement.left)!;
+    if (typeof statement.right == "string" && env.solved.has(statement.right)) statement.right = env.solved.get(statement.right)!;
+    if (typeof statement.left == "number" && typeof statement.right == "number") solve(env, name);
+    if (typeof statement.left == "string") addRequirement(env, name, statement.left);
+    if (typeof statement.right == "string") addRequirement(env, name, statement.right);
+}
+
+function addStatements(env: Environment, name: string, statement: Statement) {
+    addStatement(env, name, statement);
+    switch (statement.operation) {
         case '+':
-            addFact(name, s.left + s.right);
+            if (typeof statement.left == "string") addStatement(env, statement.left, { left: name, operation: "-", right: statement.right });
+            if (typeof statement.right == "string") addStatement(env, statement.right, { left: name, operation: "-", right: statement.left });
             break;
         case '-':
-            addFact(name, s.left - s.right);
+            if (typeof statement.left == "string") addStatement(env, statement.left, { left: name, operation: "+", right: statement.right });
+            if (typeof statement.right == "string") addStatement(env, statement.right, { left: statement.left, operation: "-", right: name });
             break;
         case '*':
-            addFact(name, s.left * s.right);
+            if (typeof statement.left == "string") addStatement(env, statement.left, { left: name, operation: "/", right: statement.right });
+            if (typeof statement.right == "string") addStatement(env, statement.right, { left: name, operation: "/", right: statement.left });
             break;
         case '/':
-            addFact(name, s.left / s.right);
+            if (typeof statement.left == "string") addStatement(env, statement.left, { left: name, operation: "*", right: statement.right });
+            if (typeof statement.right == "string") addStatement(env, statement.right, { left: statement.left, operation: "/", right: name });
             break;
+    }
+}
+
+function solve(env: Environment, name: string) {
+    if(!env.open.has(name)) return;
+    for (const s of env.open.get(name)!) {
+        if (typeof s.left == "string" || typeof s.right == "string") continue;
+        env.open.delete(name);
+        switch (s.operation) {
+            case '+':
+                addFact(env, name, s.left + s.right);
+                break;
+            case '-':
+                addFact(env, name, s.left - s.right);
+                break;
+            case '*':
+                addFact(env, name, s.left * s.right);
+                break;
+            case '/':
+                addFact(env, name, s.left / s.right);
+                break;
+        }
     }
 }
 
@@ -72,16 +110,45 @@ async function part1(path: string) {
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
 
+    const env = new Environment();
     for await (const line of rl) {
         const m = line.match(/([a-z]{4}): ((\d+)|([a-z]{4}) ([+*\/-]) ([a-z]{4}))/)!;
         if (m[3]) {
-            addFact(m[1], Number.parseInt(m[3]));
+            addFact(env, m[1], Number.parseInt(m[3]));
         } else if (isOperation(m[5])) {
-            addStatement(m[1], { left: m[4], operation: m[5], right: m[6] });
+            addStatement(env, m[1], { left: m[4], operation: m[5], right: m[6] });
         }
     }
 
-    console.log("The monkey named root yells " + solved.get("root"));
+    console.log("The monkey named root yells " + env.solved.get("root"));
 }
 
-part1("data/day21.txt");
+async function part2(path: string) {
+    const fileStream = fs.createReadStream(path);
+    const rl = readline.createInterface(fileStream);
+
+    const env = new Environment();
+    for await (const line of rl) {
+        const m = line.match(/([a-z]{4}): ((\d+)|([a-z]{4}) ([+*\/-]) ([a-z]{4}))/)!;
+        if (m[3]) {
+            if (m[1] != "humn") {
+                addFact(env, m[1], Number.parseInt(m[3]));
+            }
+        } else if (isOperation(m[5])) {
+            if (m[1] == "root") {
+                addStatements(env, m[4], { left: m[6], operation: '+', right: 0 });
+            } else {
+                addStatements(env, m[1], { left: m[4], operation: m[5], right: m[6] });
+            }
+        }
+    }
+
+    console.log("The human needs to yell " + env.solved.get("humn"));
+}
+
+async function parts(path: string) {
+    await part1(path);
+    await part2(path);
+}
+
+parts("data/day21.txt");
