@@ -8,8 +8,8 @@ function isTile(str: string): str is Tile {
     return str == " " || str == "#" || str == ".";
 }
 
-class Map {
-    private data: string[];
+abstract class Board {
+    protected data: string[];
 
     constructor(data: string[]) {
         this.data = data;
@@ -35,20 +35,38 @@ class Map {
         return tile;
     }
 
-    getNextPosition(position: Position): Position {
+    moveForwardOnMap(position: Position): Position {
+        const nextPosition = this.getNextPosition(position);
+        if (this.getTile(nextPosition) == "#") {
+            return position;
+        } else {
+            return nextPosition;
+        }
+    }
+
+    private getNextPosition(position: Position): Position {
         if (this.getTile(position) == " ") {
             throw new Error("You need to start in the map to calculate the next position");
         }
 
-        let nextPosition = { ...position };
-        if (position.direction == Direction.E) nextPosition.column++;
-        else if (position.direction == Direction.S) nextPosition.row++;
-        else if (position.direction == Direction.W) nextPosition.column--;
-        else if (position.direction == Direction.N) nextPosition.row--;
-
+        let nextPosition = moveForward(position);
         if (this.getTile(nextPosition) != " ") return nextPosition;
 
-        // Off map, wrap around
+        return this.getNextOffMapPosition(position);
+    }
+
+    abstract getNextOffMapPosition(position: Position): Position;
+
+}
+
+class FlatBoard extends Board {
+    constructor(data: string[]) {
+        super(data);
+    }
+
+    getNextOffMapPosition(position: Position): Position {
+        let nextPosition = { ...position };
+
         if (position.direction == Direction.E) {
             nextPosition.column = this.data[nextPosition.row - 1].search(/\.|#/) + 1;
         } else if (position.direction == Direction.S) {
@@ -69,6 +87,115 @@ class Map {
             }
         }
         return nextPosition;
+    }
+}
+
+class CubeBoard extends Board {
+    private stitchMap = new Map<string, Position>();
+
+    constructor(data: string[]) {
+        super(data);
+        this.stitch();
+    }
+
+    private getInnerCorners(): Pair<Position>[] {
+        const corners: Pair<Position>[] = [];
+        const start = this.startingPosition;
+        let walk = { ...start };
+        do {
+            let { position, innerCorner } = this.walkClockWise(walk);
+            if (innerCorner) {
+                corners.push({ first: turnLeft(moveForward(walk)), second: turnLeft(turnLeft(moveForward(walk))) });
+            }
+            walk = position;
+        } while (walk.row != start.row || walk.column != start.column)
+        assert(corners.length > 0);
+        return corners;
+    }
+
+    private stitch() {
+        const corners = this.getInnerCorners();
+        let progress = true;
+        while (progress) {
+            progress = false;
+            corner: for (const pair of corners) {
+                // find next step for first clockwise
+                let { position: nextFirst, outerCorner: outerCornerFirst } = this.walkClockWise(pair.first);
+                // find next step for second counterclockwise
+                let { position: nextSecond, outerCorner: outerCornerSecond } = this.walkCounterClockWise(pair.second);
+                // if this bumps into an already stitched section, skip
+                if (this.stitchMap.has(positionToString(turnLeft(nextFirst)))) {
+                    let skipTo = nextFirst;
+                    while (this.stitchMap.has(positionToString(turnLeft(skipTo)))) {
+                        if (skipTo.column == nextFirst.column && skipTo.row == nextFirst.row) continue corner;
+                        ({ position: skipTo } = this.walkClockWise(skipTo));
+                    }
+                    nextFirst = skipTo;
+                    outerCornerFirst = false;
+                }
+                if (this.stitchMap.has(positionToString(turnRight(nextSecond)))) {
+                    let skipTo = nextSecond;
+                    while (this.stitchMap.has(positionToString(turnRight(skipTo)))) {
+                        if (skipTo.column == nextSecond.column && skipTo.row == nextSecond.row) continue corner;
+                        ({ position: skipTo } = this.walkCounterClockWise(skipTo));
+                    }
+                    nextSecond = skipTo;
+                    outerCornerSecond = false;
+                }
+                // if this reaches two outer corners simultaneously, stop stitching
+                if (outerCornerFirst && outerCornerSecond) continue;
+                // move
+                pair.first = nextFirst;
+                pair.second = nextSecond;
+                progress = true;
+                // add stitch
+                this.stitchMap.set(positionToString(turnLeft(pair.first)), turnLeft(pair.second));
+                this.stitchMap.set(positionToString(turnRight(pair.second)), turnRight(pair.first));
+            }
+        }
+    }
+
+    getNextOffMapPosition(position: Position): Position {
+        assert(this.stitchMap.has(positionToString(position)));
+        return this.stitchMap.get(positionToString(position))!;
+    }
+
+    walkClockWise(position: Position) {
+        const forwardTile = this.getTile(moveForward(position));
+        const leftTile = this.getTile(moveForward(turnLeft(moveForward(position))));
+        let innerCorner = false;
+        let outerCorner = false;
+        if (forwardTile == " ") {
+            // turn right
+            position = turnRight(position);
+            outerCorner = true;
+        } else if (leftTile != " ") {
+            // advance turn left and advance
+            position = moveForward(turnLeft(moveForward(position)));
+            innerCorner = true;
+        } else {
+            position = moveForward(position);
+        }
+        return ({ position, innerCorner, outerCorner });
+    }
+
+    walkCounterClockWise(position: Position) {
+        const forwardTile = this.getTile(moveForward(position));
+        const rightTile = this.getTile(moveForward(turnRight(moveForward(position))));
+        let innerCorner = false;
+        let outerCorner = false;
+        if (forwardTile == " ") {
+            // turn left
+            position = turnLeft(position);
+            outerCorner = true;
+        } else if (rightTile != " ") {
+            // advance turn right and advance
+            position = moveForward(turnRight(moveForward(position)));
+            innerCorner = true;
+        } else {
+            position = moveForward(position);
+        }
+        return ({ position, innerCorner, outerCorner });
     }
 }
 
@@ -107,22 +234,31 @@ class Direction {
     }
 }
 
+type Pair<T> = {
+    first: T;
+    second: T;
+}
+
 type Position = {
     row: number;
     column: number;
     direction: Direction;
 }
 
-function moveForward(map: Map, position: Position): Position {
-    const nextPosition = map.getNextPosition(position);
-    if (map.getTile(nextPosition) == "#") {
-        return position;
-    } else {
-        return nextPosition;
-    }
+function positionToString(position: Position) {
+    return position.row + "," + position.column + "," + position.direction.value;
 }
 
-function turnLeft(map: Map, position: Position): Position {
+function moveForward(position: Position): Position {
+    let nextPosition = { ...position };
+    if (position.direction == Direction.E) nextPosition.column++;
+    else if (position.direction == Direction.S) nextPosition.row++;
+    else if (position.direction == Direction.W) nextPosition.column--;
+    else if (position.direction == Direction.N) nextPosition.row--;
+    return nextPosition;
+}
+
+function turnLeft(position: Position): Position {
     return {
         row: position.row,
         column: position.column,
@@ -130,7 +266,7 @@ function turnLeft(map: Map, position: Position): Position {
     }
 }
 
-function turnRight(map: Map, position: Position): Position {
+function turnRight(position: Position): Position {
     return {
         row: position.row,
         column: position.column,
@@ -138,42 +274,50 @@ function turnRight(map: Map, position: Position): Position {
     }
 }
 
-async function part1(path: string) {
+async function parts(path: string) {
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
 
     const data: string[] = [];
-    let map: Map | undefined;
-    let directions: string;
+    let flatMap: FlatBoard | undefined;
+    let cubeMap: CubeBoard | undefined;
+    let directions: string | undefined;
     for await (const line of rl) {
-        if (map === undefined && line != "") {
+        if (flatMap === undefined && line != "") {
             data.push(line);
-        } else if (map === undefined) {
-            map = new Map(data);
+        } else if (flatMap === undefined) {
+            flatMap = new FlatBoard(data);
+            cubeMap = new CubeBoard(data);
         } else {
             directions = line;
         }
     }
-    map = map!;
-    directions = directions!;
+    assert(flatMap != undefined);
+    assert(cubeMap != undefined);
+    assert(directions != undefined);
 
-    let p = map.startingPosition;
+    let p1 = flatMap.startingPosition;
+    let p2 = cubeMap.startingPosition;
     while (directions.length) {
         const m = directions.match(/(\d+)|(L)|(R)/)!;
         if (m[1]) {
             const distance = Number.parseInt(m[1]);
             for (let i = 0; i < distance; ++i) {
-                p = moveForward(map, p);
+                p1 = flatMap.moveForwardOnMap(p1);
+                p2 = cubeMap.moveForwardOnMap(p2);
             }
         } else if (m[2]) {
-            p = turnLeft(map, p);
+            p1 = turnLeft(p1);
+            p2 = turnLeft(p2);
         } else if (m[3]) {
-            p = turnRight(map, p);
+            p1 = turnRight(p1);
+            p2 = turnRight(p2);
         }
         directions = directions.slice(m[0].length, directions.length);
     }
 
-    console.log("The final password is " + (1000 * p.row + 4 * p.column + p.direction.value));
+    console.log("Part 1: The final password is " + (1000 * p1.row + 4 * p1.column + p1.direction.value));
+    console.log("Part 2: The final password is " + (1000 * p2.row + 4 * p2.column + p2.direction.value));
 }
 
-part1("data/day22.txt");
+parts("data/day22.txt");
