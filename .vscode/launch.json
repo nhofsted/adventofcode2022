@@ -286,6 +286,19 @@
             "outFiles": [
                 "${workspaceFolder}/dst/**/*.js"
             ]
-        }
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "day23",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}\\dst\\day23.js",
+            "preLaunchTask": "tsc: build - tsconfig.json",
+            "outFiles": [
+                "${workspaceFolder}/dst/**/*.js"
+            ]
+        }        
     ]
 }
