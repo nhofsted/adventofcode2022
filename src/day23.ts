@@ -10,16 +10,20 @@ type Cave = {
     elves: Elf[];
 }
 
+function elfToString(elf: Elf): string {
+    return elf.x + "," + elf.y;
+}
+
 function nextPosition(elf: Elf, positions: Set<string>, startDirection: number): Elf | null {
     for (let i = 0; i < 4; ++i) {
-        const noElfN = !positions.has(JSON.stringify({ x: elf.x, y: elf.y - 1 }));
-        const noElfNE = !positions.has(JSON.stringify({ x: elf.x + 1, y: elf.y - 1 }));
-        const noElfE = !positions.has(JSON.stringify({ x: elf.x + 1, y: elf.y }));
-        const noElfSE = !positions.has(JSON.stringify({ x: elf.x + 1, y: elf.y + 1 }));
-        const noElfS = !positions.has(JSON.stringify({ x: elf.x, y: elf.y + 1 }));
-        const noElfSW = !positions.has(JSON.stringify({ x: elf.x - 1, y: elf.y + 1 }));
-        const noElfW = !positions.has(JSON.stringify({ x: elf.x - 1, y: elf.y }));
-        const noElfNW = !positions.has(JSON.stringify({ x: elf.x - 1, y: elf.y - 1 }));
+        const noElfN = !positions.has(elfToString({ x: elf.x, y: elf.y - 1 }));
+        const noElfNE = !positions.has(elfToString({ x: elf.x + 1, y: elf.y - 1 }));
+        const noElfE = !positions.has(elfToString({ x: elf.x + 1, y: elf.y }));
+        const noElfSE = !positions.has(elfToString({ x: elf.x + 1, y: elf.y + 1 }));
+        const noElfS = !positions.has(elfToString({ x: elf.x, y: elf.y + 1 }));
+        const noElfSW = !positions.has(elfToString({ x: elf.x - 1, y: elf.y + 1 }));
+        const noElfW = !positions.has(elfToString({ x: elf.x - 1, y: elf.y }));
+        const noElfNW = !positions.has(elfToString({ x: elf.x - 1, y: elf.y - 1 }));
 
         if (noElfN && noElfNE && noElfE && noElfSE && noElfS && noElfSW && noElfW && noElfNW) return null;
 
@@ -62,13 +66,13 @@ function print(cave: Cave, positions: Set<string>) {
     for (let y = miny; y <= maxy; ++y) {
         let row = "";
         for (let x = minx; x <= maxx; ++x) {
-            row += positions.has(JSON.stringify({ x, y })) ? "#" : ".";
+            row += positions.has(elfToString({ x, y })) ? "#" : ".";
         }
         console.log(row);
     }
 }
 
-async function part1(path: string) {
+async function parts(path: string) {
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
 
@@ -82,36 +86,48 @@ async function part1(path: string) {
     }
 
     let startDirection = 0;
-    for (let round = 0; round < 10; ++round) {
-        const positions = new Set<string>();
-        cave.elves.forEach(elf => positions.add(JSON.stringify(elf)));
-        print(cave, positions);
-        const nextElfPositions = new Map<string, Elf>();
-        const claims = new Map<string, number>();
+    let round = 0;
+    let progress = true;
+    const positions = new Set<string>();
+    const nextElfPositions = new Map<string, Elf>();
+    const claims = new Map<string, number>();
+    while (progress) {
+        progress = false;
+        positions.clear();
+        cave.elves.forEach(elf => positions.add(elfToString(elf)));
+        //print(cave, positions);
+        nextElfPositions.clear();
+        claims.clear();
         cave.elves.forEach(elf => {
             const nextElf = nextPosition(elf, positions, startDirection);
             if (nextElf) {
-                const nextString = JSON.stringify(nextElf);
-                const elfString = JSON.stringify(elf);
+                const elfString = elfToString(elf);
+                const nextString = elfToString(nextElf);
                 nextElfPositions.set(elfString, nextElf);
                 let claim = claims.get(nextString) ?? 0;
                 claims.set(nextString, ++claim);
             }
         });
         cave.elves.forEach(elf => {
-            const elfString = JSON.stringify(elf);
-            const nextElf = nextElfPositions.get(elfString)!;
-            const nextString = JSON.stringify(nextElf);
-            if (claims.get(nextString) == 1) {
-                elf.x = nextElf.x;
-                elf.y = nextElf.y;
+            const elfString = elfToString(elf);
+            const nextElf = nextElfPositions.get(elfString);
+            if(nextElf){
+                const nextString = elfToString(nextElf);
+                if (claims.get(nextString) == 1) {
+                    elf.x = nextElf.x;
+                    elf.y = nextElf.y;
+                    progress = true;
+                }
             }
         });
         startDirection = (startDirection + 1) % 4;
+        round++;
+        if (round == 10) {
+            let { maxx, minx, maxy, miny } = getBounds(cave);
+            console.log("The number of empty ground tiles after round 10 is " + ((maxx - minx + 1) * (maxy - miny + 1) - cave.elves.length));
+        }
     }
-    let { maxx, minx, maxy, miny } = getBounds(cave);
-
-    console.log("The number of empty ground tiles is " + ((maxx - minx + 1) * (maxy - miny + 1) - cave.elves.length));
+    console.log("The number of rounds before no elf moves is " + round);
 }
 
-part1("data/day23.txt");
+parts("data/day23.txt");
