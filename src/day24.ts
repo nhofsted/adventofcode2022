@@ -222,7 +222,7 @@ function searchShortestPath(valley: Valley, from: TimeCoordinate, to: Coordinate
     return null;
 }
 
-async function part1(path: string) {
+async function parts(path: string) {
     const fileStream = fs.createReadStream(path);
     const rl = readline.createInterface(fileStream);
 
@@ -231,9 +231,15 @@ async function part1(path: string) {
         valley.scan(line);
     }
 
-    const shortestPath = searchShortestPath(valley, { ...valley.entrance, time: 0 }, valley.exit);
-
-    console.log("The minimum amount of time needed to pass the blizzard is " + shortestPath);
+    let total = searchShortestPath(valley, { ...valley.entrance, time: 0 }, valley.exit);
+    console.log("The minimum amount of time from start to goal is ", total, " (part 1)");
+    let startTime = total;
+    total = searchShortestPath(valley, { ...valley.exit, time: total! }, valley.entrance);
+    console.log("The amount of time to go from goal back to start is ", total! - startTime!);
+    startTime = total;
+    total = searchShortestPath(valley, { ...valley.entrance, time: total! }, valley.exit);
+    console.log("The amount of time to go from start back to goal is ", total! - startTime!);
+    console.log("The total amount of time the trip takes is ", total, " (part 2)");
 }
 
-part1("data/day24.txt");
+parts("data/day24.data.txt");
